@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum Role {
+  admin
+  designer
+  requester
+}
+
+// User status enum
+enum UserStatus {
+  active
+  inactive
+}
+
+// Request status enum
+enum RequestStatus {
+  draft
+  submitted
+  assigned
+  in_design
+  in_review
+  changes_requested
+  ready_to_publish   // Design ready for publish (can be marked by designer or requester after approval)
+  completed          // Designer marks as completed (skipping changes, ready for publish)
+  published          // Requester publishes with a link
+  archived
+}
+
+// Request priority enum
+enum Priority {
+  low
+  medium
+  high
+  campaign_critical
+}
+
+// Asset type enum - source files vs final deliverables
+enum AssetType {
+  source    // Working files (PSD, AI, etc.) - visible to designers and admins
+  final     // Final deliverables - visible to everyone including requesters
+}
+
+// User model
+model User {
+  id                      Int            @id @default(autoincrement())
+  username                String         @unique
+  email                   String         @unique
+  password                String
+  role                    Role           @default(requester)
+  status                  UserStatus     @default(active)
+  lastLogin               DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  // Relations
+  requestsCreated         Request[]      @relation("RequestRequester")
+  requestsAssigned        Request[]      @relation("RequestDesigner")
+  cataloguesCreated       Catalogue[]
+  comments                Comment[]
+  assetsUploaded          Asset[]
+  notificationsReceived   Notification[] @relation("NotificationRecipient")
+  notificationsSent       Notification[] @relation("NotificationSender")
+
+  @@map("users")
+}
+
+// Catalogue model for grouping requests
+model Catalogue {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  createdById Int
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  
+  requests    Request[]
+
+  @@map("catalogues")
+}
+
+// Request model (Design Request Management)
+model Request {
+  id            String         @id @default(cuid())
+  drmCode       String         @unique
+  name          String
+  description   String?
+  referenceLink String?        // Reference URL provided by requester (e.g., inspiration, brand guidelines)
+  status        RequestStatus  @default(draft)
+  priority      Priority       @default(medium)
+  dueDate       DateTime?
+  publishedLink String?        // Link where the design was published (required for published status)
+  publishedAt   DateTime?      // When the design was published
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  requesterId   Int
+  requester     User           @relation("RequestRequester", fields: [requesterId], references: [id])
+  
+  designerId    Int?
+  designer      User?          @relation("RequestDesigner", fields: [designerId], references: [id])
+  
+  catalogueId   String?
+  catalogue     Catalogue?     @relation(fields: [catalogueId], references: [id], onDelete: SetNull)
+  
+  comments      Comment[]
+  assets        Asset[]
+  notifications Notification[]
+
+  @@map("requests")
+}
+
+// Comment model for request discussions
+model Comment {
+  id          Int       @id @default(autoincrement())
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  requestId   String
+  request     Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  authorId    Int
+  author      User      @relation(fields: [authorId], references: [id])
+
+  @@map("comments")
+}
+
+// Asset model for uploaded files
+model Asset {
+  id          Int       @id @default(autoincrement())
+  filename    String
+  fileUrl     String
+  fileType    String    // MIME type
+  fileSize    Int       // Size in bytes
+  assetType   AssetType @default(source)  // source or final
+  version     Int       @default(1)
+  versionNote String?   // Optional note about this version
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  requestId   String
+  request     Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  uploadedById Int
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+
+  @@map("assets")
+}
+
+// Notification type enum
+enum NotificationType {
+  feedback          // Requester added feedback
+  comment           // Designer/Admin added comment
+  status_change     // Request status changed
+  assignment        // Designer assigned to request
+  asset_uploaded    // New asset uploaded
+}
+
+// Notification model for real-time alerts
+model Notification {
+  id          Int              @id @default(autoincrement())
+  type        NotificationType
+  title       String
+  message     String
+  link        String?          // Optional link to related item
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  userId      Int              // User who receives the notification
+  user        User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  
+  fromUserId  Int?             // User who triggered the notification (optional)
+  fromUser    User?            @relation("NotificationSender", fields: [fromUserId], references: [id])
+  
+  requestId   String?          // Related request (optional)
+  request     Request?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
