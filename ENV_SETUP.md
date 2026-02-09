@@ -19,8 +19,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Database Connection URLs
-DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
 ```
 
 ## How to Find Your Supabase Keys
@@ -64,13 +64,13 @@ DIRECT_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-1-ap-s
 
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://tgslczdanvsaowlzbdbf.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_gQBrFg8L64GvlNztz17KCQ_Cbky7tpq
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (your actual key)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_publishable_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Database Connections
-DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:your_password@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:your_password@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://postgres.your-project-ref:your_password@aws-0-region.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.your-project-ref:your_password@aws-0-region.pooler.supabase.com:5432/postgres
 ```
 
 ## Security Notes

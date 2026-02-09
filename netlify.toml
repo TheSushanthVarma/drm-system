@@ -7,6 +7,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Omit NEXT_PUBLIC_* keys from secrets scanning (these are public publishable keys)
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,NEXT_PUBLIC_SUPABASE_URL"
 
 # Headers for security and performance
 [[headers]]

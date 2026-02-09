@@ -2,13 +2,14 @@
 
 ## Step 1: Get Your Database Connection String
 
-1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/tgslczdanvsaowlzbdbf
-2. Navigate to **Settings** → **Database**
-3. Scroll down to the **Connection string** section
-4. Select **URI** format
-5. Copy the connection string (it will look like):
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard
+2. Select your project
+3. Navigate to **Settings** → **Database**
+4. Scroll down to the **Connection string** section
+5. Select **URI** format
+6. Copy the connection string (it will look like):
    ```
-   postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+   postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
    ```
 
 ## Step 2: Update Your .env File
@@ -21,12 +22,12 @@ Add or update these variables in your `drm-system/.env` file:
 DB_CONNECTION=supabase
 
 # Supabase Client Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://tgslczdanvsaowlzbdbf.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_gQBrFg8L64GvlNztz17KCQ_Cbky7tpq
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_publishable_key_here
 
 # Supabase Database Connection (used when DB_CONNECTION=supabase)
 # Replace the SUPABASE_DATABASE_URL below with the connection string from Step 1
-SUPABASE_DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+SUPABASE_DATABASE_URL=postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 
 # Local Database Connection (used when DB_CONNECTION=local or not set)
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/drm-system?schema=public
@@ -75,7 +76,7 @@ npx prisma generate
 If you prefer a direct connection (not pooled), use this format:
 
 ```env
-DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
 ```
 
 ## Troubleshooting

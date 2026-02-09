@@ -30,15 +30,15 @@ DB_CONNECTION=supabase
 
 # Supabase Database Connection (Pooled - for app connections)
 # Get from: Supabase Dashboard → Settings → Database → Connection string (URI, Connection pooling)
-DATABASE_URL="postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DATABASE_URL="postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
 
 # Direct Database Connection (for migrations)
 # Get from: Supabase Dashboard → Settings → Database → Connection string (URI, Direct connection)
-DIRECT_URL="postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+DIRECT_URL="postgresql://postgres.your-project-ref:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
 
 # Supabase Client Configuration
 # Get from: Supabase Dashboard → Settings → API
-NEXT_PUBLIC_SUPABASE_URL=https://tgslczdanvsaowlzbdbf.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_anon_key_here
 ```
 
