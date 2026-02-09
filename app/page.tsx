@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -19,6 +20,8 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const { login, user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const verified = searchParams.get("verified") === "true"
 
   // Redirect if already logged in
   useEffect(() => {
@@ -26,6 +29,16 @@ export default function LoginPage() {
       router.push("/dashboard")
     }
   }, [user, authLoading, router])
+
+  // Clear verified param from URL after showing message
+  useEffect(() => {
+    if (verified) {
+      const timer = setTimeout(() => {
+        router.replace("/")
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [verified, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,6 +111,13 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {verified && (
+              <div className="flex items-center gap-2 p-3 text-sm text-green-700 bg-green-50 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>Email verified successfully! You can now sign in.</span>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">

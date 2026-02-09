@@ -124,6 +124,129 @@ export async function login(email: string, password: string): Promise<{ success:
 }
 
 /**
+ * Signup using Supabase Auth
+ * Validates email domain and creates user with email verification required
+ */
+export async function signup(
+  username: string,
+  email: string,
+  password: string
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  try {
+    // Validate email domain - only allow @techdemocracy.com
+    if (!email.endsWith("@techdemocracy.com")) {
+      return {
+        success: false,
+        error: "Only @techdemocracy.com email addresses are allowed",
+      }
+    }
+
+    // Validate username
+    if (!username || username.trim().length === 0) {
+      return {
+        success: false,
+        error: "Username is required",
+      }
+    }
+
+    // Check if username already exists
+    const existingUserByUsername = await prisma.user.findUnique({
+      where: { username: username.trim() },
+    })
+
+    if (existingUserByUsername) {
+      return {
+        success: false,
+        error: "Username already taken",
+      }
+    }
+
+    // Check if email already exists
+    const existingUserByEmail = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    })
+
+    if (existingUserByEmail) {
+      return {
+        success: false,
+        error: "Email already registered",
+      }
+    }
+
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+
+    // Sign up with Supabase Auth
+    // Email confirmation is required by default in Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: {
+        data: {
+          username: username.trim(),
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to create account",
+      }
+    }
+
+    if (!data.user) {
+      return {
+        success: false,
+        error: "Failed to create account",
+      }
+    }
+
+    // Create user profile in our database
+    // Note: User will be created with status 'active' but email verification is still required
+    try {
+      await prisma.user.create({
+        data: {
+          id: data.user.id,
+          username: username.trim(),
+          email: email.toLowerCase().trim(),
+          role: "requester", // Default role for new signups
+          status: "active",
+        },
+      })
+    } catch (dbError: any) {
+      // If database creation fails, try to clean up Supabase auth user
+      console.error("Database user creation error:", dbError)
+      
+      // Check if it's a unique constraint error (user might have been created in a race condition)
+      if (dbError.code === "P2002") {
+        return {
+          success: false,
+          error: "Username or email already exists",
+        }
+      }
+
+      return {
+        success: false,
+        error: "Failed to create user profile. Please try again.",
+      }
+    }
+
+    return {
+      success: true,
+      message: "Account created successfully. Please check your email to verify your account.",
+    }
+  } catch (error) {
+    console.error("Signup error:", error)
+    return {
+      success: false,
+      error: "An error occurred during signup",
+    }
+  }
+}
+
+/**
  * Logout from Supabase Auth
  */
 export async function logout(): Promise<void> {

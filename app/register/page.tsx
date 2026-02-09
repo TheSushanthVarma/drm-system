@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [verifiedEmail, setVerifiedEmail] = useState("")
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -22,15 +25,61 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    setSuccess(false)
+
+    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match")
+      setError("Passwords do not match")
       return
     }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      return
+    }
+
+    // Validate email domain
+    if (!formData.email.endsWith("@techdemocracy.com")) {
+      setError("Only @techdemocracy.com email addresses are allowed")
+      return
+    }
+
     setIsLoading(true)
-    setTimeout(() => {
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setSuccess(true)
+        setVerifiedEmail(formData.email.trim())
+        // Reset form
+        setFormData({
+          username: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+        })
+      } else {
+        setError(data.error || "Failed to create account. Please try again.")
+        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error("Signup error:", err)
+      setError("An error occurred. Please try again.")
       setIsLoading(false)
-      window.location.href = "/dashboard"
-    }, 1000)
+    }
   }
 
   return (
@@ -74,13 +123,14 @@ export default function RegisterPage() {
                 <Mail className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="you@techdemocracy.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="pl-10 h-11 bg-muted border-0"
                   required
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Only @techdemocracy.com emails are allowed</p>
             </div>
 
             <div className="space-y-2">
@@ -127,10 +177,29 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {error && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="flex flex-col gap-2 p-4 text-sm text-green-700 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-semibold">Account created successfully!</span>
+                </div>
+                <p className="text-green-600 ml-6">
+                  Please check your email ({verifiedEmail}) to verify your account before signing in.
+                </p>
+              </div>
+            )}
+
             <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full h-11 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-semibold rounded-lg flex items-center justify-center gap-2 group"
+              disabled={isLoading || success}
+              className="w-full h-11 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white font-semibold rounded-lg flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
