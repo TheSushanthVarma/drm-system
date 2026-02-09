@@ -1,130 +1,144 @@
 import { cookies } from "next/headers"
 import { prisma } from "./db"
-import * as bcrypt from "bcryptjs"
+import { createClient } from "@/utils/supabase/server"
 
 export type UserRole = "admin" | "designer" | "requester"
 
 export interface AuthUser {
-  id: number
+  id: string // UUID from Supabase
   username: string
   email: string
   role: UserRole
   status: "active" | "inactive"
 }
 
-const SESSION_COOKIE_NAME = "drm_session"
-
-// Simple encoding/decoding for session data (in production, use proper JWT)
-function encodeSession(user: AuthUser): string {
-  return Buffer.from(JSON.stringify(user)).toString("base64")
-}
-
-function decodeSession(token: string): AuthUser | null {
+/**
+ * Get the current authenticated user from Supabase session
+ * Returns the user profile from our database linked to Supabase auth
+ */
+export async function getSession(): Promise<AuthUser | null> {
   try {
-    const decoded = Buffer.from(token, "base64").toString("utf-8")
-    return JSON.parse(decoded) as AuthUser
-  } catch {
-    return null
-  }
-}
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
 
-export async function login(email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Get the authenticated user from Supabase
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !authUser) {
+      return null
+    }
+
+    // Get the user profile from our database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: authUser.id },
       select: {
         id: true,
         username: true,
         email: true,
-        password: true,
         role: true,
         status: true,
       },
     })
 
-    if (!user) {
-      return { success: false, error: "Invalid email or password" }
+    if (!dbUser || dbUser.status === "inactive") {
+      return null
     }
 
-    if (user.status === "inactive") {
+    return {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email,
+      role: dbUser.role as UserRole,
+      status: dbUser.status as "active" | "inactive",
+    }
+  } catch (error) {
+    console.error("Session error:", error)
+    return null
+  }
+}
+
+/**
+ * Login using Supabase Auth
+ * Note: This function is kept for API compatibility but login should be handled client-side
+ * For server-side login, use Supabase client directly
+ */
+export async function login(email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+
+    // Sign in with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error || !data.user) {
+      return { success: false, error: error?.message || "Invalid email or password" }
+    }
+
+    // Get user profile from our database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+      },
+    })
+
+    if (!dbUser) {
+      // User exists in Supabase auth but not in our database
+      // This shouldn't happen, but handle it gracefully
+      return { success: false, error: "User profile not found. Please contact an administrator." }
+    }
+
+    if (dbUser.status === "inactive") {
+      // Sign out from Supabase if account is inactive
+      await supabase.auth.signOut()
       return { success: false, error: "Your account is inactive. Please contact an administrator." }
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password)
-    if (!passwordMatch) {
-      return { success: false, error: "Invalid email or password" }
     }
 
     // Update last login
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: dbUser.id },
       data: { lastLogin: new Date() },
     })
 
-    const authUser: AuthUser = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role as UserRole,
-      status: user.status as "active" | "inactive",
+    return {
+      success: true,
+      user: {
+        id: dbUser.id,
+        username: dbUser.username,
+        email: dbUser.email,
+        role: dbUser.role as UserRole,
+        status: dbUser.status as "active" | "inactive",
+      },
     }
-
-    // Encode user data and store in cookie
-    const sessionToken = encodeSession(authUser)
-
-    // Set cookie
-    const cookieStore = await cookies()
-    cookieStore.set(SESSION_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
-    })
-
-    return { success: true, user: authUser }
   } catch (error) {
     console.error("Login error:", error)
     return { success: false, error: "An error occurred during login" }
   }
 }
 
+/**
+ * Logout from Supabase Auth
+ */
 export async function logout(): Promise<void> {
-  const cookieStore = await cookies()
-  cookieStore.delete(SESSION_COOKIE_NAME)
+  try {
+    const cookieStore = await cookies()
+    const supabase = createClient(cookieStore)
+    await supabase.auth.signOut()
+  } catch (error) {
+    console.error("Logout error:", error)
+  }
 }
 
-export async function getSession(): Promise<AuthUser | null> {
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value
-  
-  if (!sessionToken) {
-    return null
-  }
-
-  // Decode session from cookie
-  const user = decodeSession(sessionToken)
-  
-  // Optionally verify user still exists and is active in database
-  if (user) {
-    try {
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { id: true, status: true },
-      })
-      
-      if (!dbUser || dbUser.status === "inactive") {
-        return null
-      }
-    } catch {
-      // If DB check fails, still return the cached user data
-      // This allows the app to work even if DB is temporarily unavailable
-    }
-  }
-  
-  return user
-}
-
+/**
+ * Require authentication - throws if user is not authenticated
+ */
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getSession()
   if (!user) {
@@ -133,6 +147,9 @@ export async function requireAuth(): Promise<AuthUser> {
   return user
 }
 
+/**
+ * Check if user has one of the specified roles
+ */
 export function hasRole(user: AuthUser, roles: UserRole[]): boolean {
   return roles.includes(user.role)
 }
@@ -183,4 +200,3 @@ export const permissions = {
 export function getPermissions(role: UserRole) {
   return permissions[role]
 }
-

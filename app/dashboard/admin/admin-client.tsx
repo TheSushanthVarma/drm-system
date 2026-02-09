@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface User {
-  id: number
+  id: string // UUID from Supabase
   username: string
   email: string
   role: string

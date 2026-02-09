@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 export type UserRole = "admin" | "designer" | "requester"
 
 export interface AuthUser {
-  id: number
+  id: string // UUID from Supabase
   username: string
   email: string
   role: UserRole

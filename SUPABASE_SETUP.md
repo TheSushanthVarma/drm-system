@@ -16,13 +16,20 @@
 Add or update these variables in your `drm-system/.env` file:
 
 ```env
+# Database Connection Type
+# Set to "supabase" to use Supabase database, or "local" (or leave unset) to use local DATABASE_URL
+DB_CONNECTION=supabase
+
 # Supabase Client Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://tgslczdanvsaowlzbdbf.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_gQBrFg8L64GvlNztz17KCQ_Cbky7tpq
 
-# Database Connection (PostgreSQL via Supabase)
-# Replace the DATABASE_URL below with the connection string from Step 1
-DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+# Supabase Database Connection (used when DB_CONNECTION=supabase)
+# Replace the SUPABASE_DATABASE_URL below with the connection string from Step 1
+SUPABASE_DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+
+# Local Database Connection (used when DB_CONNECTION=local or not set)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/drm-system?schema=public
 ```
 
 **Important Notes:**
@@ -30,6 +37,15 @@ DATABASE_URL=postgresql://postgres.tgslczdanvsaowlzbdbf:[YOUR-PASSWORD]@aws-0-[R
 - Replace `[REGION]` with your actual region (e.g., `us-east-1`, `eu-west-1`)
 - The connection string uses port `6543` for pooled connections (recommended)
 - For direct connections, use port `5432` instead
+
+## How Database Connection Works
+
+The application uses the `DB_CONNECTION` environment variable to determine which database to connect to:
+
+- **`DB_CONNECTION=supabase`**: Connects to Supabase using `SUPABASE_DATABASE_URL`
+- **`DB_CONNECTION=local`** or **unset**: Connects to local database using `DATABASE_URL`
+
+This allows you to easily switch between local development and Supabase production databases without changing your code.
 
 ## Step 3: Run Prisma Migrations
 

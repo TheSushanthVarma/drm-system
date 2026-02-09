@@ -12,5 +12,7 @@ export default defineConfig({
   engine: "classic",
   datasource: {
     url: env("DATABASE_URL"),
+    directUrl: env("DIRECT_URL"),
   },
+  seed: "npx tsx prisma/seed.ts",
 });

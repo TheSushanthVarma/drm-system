@@ -1,133 +1,211 @@
 import { PrismaClient } from "../lib/generated/prisma/client"
-import * as bcrypt from "bcryptjs"
+import { createClient } from "@supabase/supabase-js"
+import "dotenv/config"
 
 const prisma = new PrismaClient()
 
+// Initialize Supabase Admin Client for user creation
+// Note: You'll need to set SUPABASE_SERVICE_ROLE_KEY in your environment
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("❌ Missing Supabase environment variables:")
+  console.error("   - NEXT_PUBLIC_SUPABASE_URL")
+  console.error("   - SUPABASE_SERVICE_ROLE_KEY")
+  console.error("\nPlease add these to your .env or .env.local file")
+  console.error("\nYou can find these values in:")
+  console.error("   - Supabase Dashboard → Settings → API")
+  console.error("   - NEXT_PUBLIC_SUPABASE_URL: Project URL")
+  console.error("   - SUPABASE_SERVICE_ROLE_KEY: service_role key (keep secret!)")
+  process.exit(1)
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
+
+interface UserSeedData {
+  username: string
+  email: string
+  password: string
+  role: "admin" | "designer" | "requester"
+  status: "active" | "inactive"
+  lastLogin?: Date
+}
+
+const userSeedData: UserSeedData[] = [
+  {
+    username: "admin",
+    email: "admin@drm-system.com",
+    password: "testuser123",
+    role: "admin",
+    status: "active",
+    lastLogin: new Date("2026-01-08T09:00:00Z"),
+  },
+  {
+    username: "sarah.designer",
+    email: "sarah@drm-system.com",
+    password: "testuser123",
+    role: "designer",
+    status: "active",
+    lastLogin: new Date("2026-01-07T14:30:00Z"),
+  },
+  {
+    username: "mike.creative",
+    email: "mike@drm-system.com",
+    password: "testuser123",
+    role: "designer",
+    status: "active",
+    lastLogin: new Date("2026-01-08T08:15:00Z"),
+  },
+  {
+    username: "emma.graphics",
+    email: "emma@drm-system.com",
+    password: "testuser123",
+    role: "designer",
+    status: "active",
+    lastLogin: new Date("2026-01-06T16:45:00Z"),
+  },
+  {
+    username: "john.marketing",
+    email: "john@company.com",
+    password: "testuser123",
+    role: "requester",
+    status: "active",
+    lastLogin: new Date("2026-01-08T10:00:00Z"),
+  },
+  {
+    username: "lisa.sales",
+    email: "lisa@company.com",
+    password: "testuser123",
+    role: "requester",
+    status: "active",
+    lastLogin: new Date("2026-01-07T11:20:00Z"),
+  },
+  {
+    username: "david.product",
+    email: "david@company.com",
+    password: "testuser123",
+    role: "requester",
+    status: "active",
+    lastLogin: new Date("2026-01-05T09:30:00Z"),
+  },
+  {
+    username: "alex.events",
+    email: "alex@company.com",
+    password: "testuser123",
+    role: "requester",
+    status: "inactive",
+    lastLogin: new Date("2025-12-20T14:00:00Z"),
+  },
+  {
+    username: "rachel.hr",
+    email: "rachel@company.com",
+    password: "testuser123",
+    role: "requester",
+    status: "active",
+    lastLogin: new Date("2026-01-08T07:45:00Z"),
+  },
+  {
+    username: "superadmin",
+    email: "superadmin@drm-system.com",
+    password: "testuser123",
+    role: "admin",
+    status: "active",
+    lastLogin: new Date("2026-01-08T06:00:00Z"),
+  },
+]
+
 async function main() {
   console.log("🌱 Starting database seed...")
-
-  // Hash the password "testuser123" for all users
-  const hashedPassword = await bcrypt.hash("testuser123", 10)
 
   // Clear existing data
   console.log("🧹 Clearing existing data...")
   await prisma.comment.deleteMany()
   await prisma.asset.deleteMany()
   await prisma.request.deleteMany()
+  await prisma.catalogue.deleteMany()
+  await prisma.notification.deleteMany()
   await prisma.user.deleteMany()
 
-  // Create Users
-  console.log("👥 Creating users...")
-  
-  const adminUser = await prisma.user.create({
-    data: {
-      username: "admin",
-      email: "admin@drm-system.com",
-      password: hashedPassword,
-      role: "admin",
-      status: "active",
-      lastLogin: new Date("2026-01-08T09:00:00Z"),
-    },
-  })
+  // Create users in Supabase Auth and our database
+  console.log("👥 Creating users in Supabase Auth and database...")
+  const createdUsers: Record<string, { id: string; username: string; email: string }> = {}
 
-  const designerSarah = await prisma.user.create({
-    data: {
-      username: "sarah.designer",
-      email: "sarah@drm-system.com",
-      password: hashedPassword,
-      role: "designer",
-      status: "active",
-      lastLogin: new Date("2026-01-07T14:30:00Z"),
-    },
-  })
+  for (const userData of userSeedData) {
+    try {
+      // Create user in Supabase Auth
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          username: userData.username,
+        },
+      })
 
-  const designerMike = await prisma.user.create({
-    data: {
-      username: "mike.creative",
-      email: "mike@drm-system.com",
-      password: hashedPassword,
-      role: "designer",
-      status: "active",
-      lastLogin: new Date("2026-01-08T08:15:00Z"),
-    },
-  })
+      if (authError) {
+        // If user already exists, try to get them
+        if (authError.message.includes("already registered")) {
+          console.log(`   ⚠️  User ${userData.email} already exists in Supabase Auth, fetching...`)
+          const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers()
+          const foundUser = existingUser?.users.find((u) => u.email === userData.email)
+          if (foundUser) {
+            // Create user profile in our database
+            const dbUser = await prisma.user.create({
+              data: {
+                id: foundUser.id,
+                username: userData.username,
+                email: userData.email,
+                role: userData.role,
+                status: userData.status,
+                lastLogin: userData.lastLogin,
+              },
+            })
+            createdUsers[userData.username] = {
+              id: dbUser.id,
+              username: dbUser.username,
+              email: dbUser.email,
+            }
+            console.log(`   ✅ User profile created: ${userData.username}`)
+            continue
+          }
+        }
+        throw authError
+      }
 
-  const designerEmma = await prisma.user.create({
-    data: {
-      username: "emma.graphics",
-      email: "emma@drm-system.com",
-      password: hashedPassword,
-      role: "designer",
-      status: "active",
-      lastLogin: new Date("2026-01-06T16:45:00Z"),
-    },
-  })
+      if (!authUser.user) {
+        throw new Error(`Failed to create auth user for ${userData.email}`)
+      }
 
-  const requesterJohn = await prisma.user.create({
-    data: {
-      username: "john.marketing",
-      email: "john@company.com",
-      password: hashedPassword,
-      role: "requester",
-      status: "active",
-      lastLogin: new Date("2026-01-08T10:00:00Z"),
-    },
-  })
+      // Create user profile in our database
+      const dbUser = await prisma.user.create({
+        data: {
+          id: authUser.user.id,
+          username: userData.username,
+          email: userData.email,
+          role: userData.role,
+          status: userData.status,
+          lastLogin: userData.lastLogin,
+        },
+      })
 
-  const requesterLisa = await prisma.user.create({
-    data: {
-      username: "lisa.sales",
-      email: "lisa@company.com",
-      password: hashedPassword,
-      role: "requester",
-      status: "active",
-      lastLogin: new Date("2026-01-07T11:20:00Z"),
-    },
-  })
+      createdUsers[userData.username] = {
+        id: dbUser.id,
+        username: dbUser.username,
+        email: dbUser.email,
+      }
 
-  const requesterDavid = await prisma.user.create({
-    data: {
-      username: "david.product",
-      email: "david@company.com",
-      password: hashedPassword,
-      role: "requester",
-      status: "active",
-      lastLogin: new Date("2026-01-05T09:30:00Z"),
-    },
-  })
-
-  const requesterAlex = await prisma.user.create({
-    data: {
-      username: "alex.events",
-      email: "alex@company.com",
-      password: hashedPassword,
-      role: "requester",
-      status: "inactive",
-      lastLogin: new Date("2025-12-20T14:00:00Z"),
-    },
-  })
-
-  const requesterRachel = await prisma.user.create({
-    data: {
-      username: "rachel.hr",
-      email: "rachel@company.com",
-      password: hashedPassword,
-      role: "requester",
-      status: "active",
-      lastLogin: new Date("2026-01-08T07:45:00Z"),
-    },
-  })
-
-  const adminSuper = await prisma.user.create({
-    data: {
-      username: "superadmin",
-      email: "superadmin@drm-system.com",
-      password: hashedPassword,
-      role: "admin",
-      status: "active",
-      lastLogin: new Date("2026-01-08T06:00:00Z"),
-    },
-  })
+      console.log(`   ✅ Created: ${userData.username} (${userData.role})`)
+    } catch (error) {
+      console.error(`   ❌ Error creating user ${userData.username}:`, error)
+      throw error
+    }
+  }
 
   console.log("✅ Created 10 users")
 
@@ -144,8 +222,8 @@ async function main() {
         status: "in_design",
         priority: "high",
         dueDate: new Date("2026-01-15"),
-        requesterId: requesterJohn.id,
-        designerId: designerSarah.id,
+        requesterId: createdUsers["john.marketing"].id,
+        designerId: createdUsers["sarah.designer"].id,
       },
       {
         drmCode: "DRM-2026-002",
@@ -155,7 +233,7 @@ async function main() {
         status: "submitted",
         priority: "medium",
         dueDate: new Date("2026-01-20"),
-        requesterId: requesterLisa.id,
+        requesterId: createdUsers["lisa.sales"].id,
         designerId: null,
       },
       {
@@ -166,8 +244,8 @@ async function main() {
         status: "ready_to_publish",
         priority: "campaign_critical",
         dueDate: new Date("2026-01-10"),
-        requesterId: requesterJohn.id,
-        designerId: designerMike.id,
+        requesterId: createdUsers["john.marketing"].id,
+        designerId: createdUsers["mike.creative"].id,
       },
       {
         drmCode: "DRM-2026-004",
@@ -177,8 +255,8 @@ async function main() {
         status: "in_review",
         priority: "high",
         dueDate: new Date("2026-02-01"),
-        requesterId: requesterDavid.id,
-        designerId: designerEmma.id,
+        requesterId: createdUsers["david.product"].id,
+        designerId: createdUsers["emma.graphics"].id,
       },
       {
         drmCode: "DRM-2026-005",
@@ -187,8 +265,8 @@ async function main() {
         status: "assigned",
         priority: "medium",
         dueDate: new Date("2026-01-25"),
-        requesterId: requesterJohn.id,
-        designerId: designerSarah.id,
+        requesterId: createdUsers["john.marketing"].id,
+        designerId: createdUsers["sarah.designer"].id,
       },
       {
         drmCode: "DRM-2026-006",
@@ -197,7 +275,7 @@ async function main() {
         status: "draft",
         priority: "low",
         dueDate: new Date("2026-02-28"),
-        requesterId: requesterRachel.id,
+        requesterId: createdUsers["rachel.hr"].id,
         designerId: null,
       },
       {
@@ -207,8 +285,8 @@ async function main() {
         status: "changes_requested",
         priority: "high",
         dueDate: new Date("2026-01-12"),
-        requesterId: requesterDavid.id,
-        designerId: designerMike.id,
+        requesterId: createdUsers["david.product"].id,
+        designerId: createdUsers["mike.creative"].id,
       },
       {
         drmCode: "DRM-2026-008",
@@ -217,8 +295,8 @@ async function main() {
         status: "published",
         priority: "medium",
         dueDate: new Date("2026-01-05"),
-        requesterId: requesterLisa.id,
-        designerId: designerSarah.id,
+        requesterId: createdUsers["lisa.sales"].id,
+        designerId: createdUsers["sarah.designer"].id,
       },
       {
         drmCode: "DRM-2026-009",
@@ -227,8 +305,8 @@ async function main() {
         status: "in_design",
         priority: "campaign_critical",
         dueDate: new Date("2026-01-30"),
-        requesterId: requesterRachel.id,
-        designerId: designerEmma.id,
+        requesterId: createdUsers["rachel.hr"].id,
+        designerId: createdUsers["emma.graphics"].id,
       },
       {
         drmCode: "DRM-2026-010",
@@ -237,7 +315,7 @@ async function main() {
         status: "submitted",
         priority: "high",
         dueDate: new Date("2026-01-18"),
-        requesterId: requesterDavid.id,
+        requesterId: createdUsers["david.product"].id,
         designerId: null,
       },
       {
@@ -247,8 +325,8 @@ async function main() {
         status: "archived",
         priority: "medium",
         dueDate: new Date("2025-12-20"),
-        requesterId: requesterAlex.id,
-        designerId: designerMike.id,
+        requesterId: createdUsers["alex.events"].id,
+        designerId: createdUsers["mike.creative"].id,
       },
       {
         drmCode: "DRM-2026-011",
@@ -257,7 +335,7 @@ async function main() {
         status: "draft",
         priority: "medium",
         dueDate: new Date("2026-02-15"),
-        requesterId: requesterDavid.id,
+        requesterId: createdUsers["david.product"].id,
         designerId: null,
       },
       {
@@ -267,8 +345,8 @@ async function main() {
         status: "in_review",
         priority: "high",
         dueDate: new Date("2026-01-14"),
-        requesterId: requesterJohn.id,
-        designerId: designerSarah.id,
+        requesterId: createdUsers["john.marketing"].id,
+        designerId: createdUsers["sarah.designer"].id,
       },
       {
         drmCode: "DRM-2026-013",
@@ -277,8 +355,8 @@ async function main() {
         status: "assigned",
         priority: "low",
         dueDate: new Date("2026-03-01"),
-        requesterId: requesterRachel.id,
-        designerId: designerEmma.id,
+        requesterId: createdUsers["rachel.hr"].id,
+        designerId: createdUsers["emma.graphics"].id,
       },
       {
         drmCode: "DRM-2026-014",
@@ -287,8 +365,8 @@ async function main() {
         status: "ready_to_publish",
         priority: "medium",
         dueDate: new Date("2026-01-08"),
-        requesterId: requesterJohn.id,
-        designerId: designerMike.id,
+        requesterId: createdUsers["john.marketing"].id,
+        designerId: createdUsers["mike.creative"].id,
       },
     ],
   })
@@ -299,11 +377,10 @@ async function main() {
   console.log("💬 Creating comments...")
 
   const requests = await prisma.request.findMany()
-  
-  // Add comments to some requests
-  const requestDRM001 = requests.find(r => r.drmCode === "DRM-2026-001")
-  const requestDRM004 = requests.find(r => r.drmCode === "DRM-2026-004")
-  const requestDRM007 = requests.find(r => r.drmCode === "DRM-2026-007")
+
+  const requestDRM001 = requests.find((r) => r.drmCode === "DRM-2026-001")
+  const requestDRM004 = requests.find((r) => r.drmCode === "DRM-2026-004")
+  const requestDRM007 = requests.find((r) => r.drmCode === "DRM-2026-007")
 
   if (requestDRM001) {
     await prisma.comment.createMany({
@@ -311,17 +388,17 @@ async function main() {
         {
           content: "Please make sure to use the new brand colors from the 2026 guidelines.",
           requestId: requestDRM001.id,
-          authorId: requesterJohn.id,
+          authorId: createdUsers["john.marketing"].id,
         },
         {
           content: "Got it! I'll also include the gradient overlay as discussed. First draft coming soon.",
           requestId: requestDRM001.id,
-          authorId: designerSarah.id,
+          authorId: createdUsers["sarah.designer"].id,
         },
         {
           content: "First draft looks great! Can we make the CTA button more prominent?",
           requestId: requestDRM001.id,
-          authorId: requesterJohn.id,
+          authorId: createdUsers["john.marketing"].id,
         },
       ],
     })
@@ -333,12 +410,12 @@ async function main() {
         {
           content: "The booth dimensions are 10x10 feet. I've attached the venue specifications.",
           requestId: requestDRM004.id,
-          authorId: requesterDavid.id,
+          authorId: createdUsers["david.product"].id,
         },
         {
           content: "Thanks! Working on the initial concepts. Should have something by end of week.",
           requestId: requestDRM004.id,
-          authorId: designerEmma.id,
+          authorId: createdUsers["emma.graphics"].id,
         },
       ],
     })
@@ -350,17 +427,17 @@ async function main() {
         {
           content: "The animation feels too fast. Can we slow it down by about 30%?",
           requestId: requestDRM007.id,
-          authorId: requesterDavid.id,
+          authorId: createdUsers["david.product"].id,
         },
         {
           content: "Also, the headline text needs to be larger for mobile devices.",
           requestId: requestDRM007.id,
-          authorId: requesterDavid.id,
+          authorId: createdUsers["david.product"].id,
         },
         {
           content: "Will make those adjustments and send updated version tomorrow.",
           requestId: requestDRM007.id,
-          authorId: designerMike.id,
+          authorId: createdUsers["mike.creative"].id,
         },
       ],
     })
@@ -383,7 +460,7 @@ async function main() {
           version: 1,
           versionNote: "Initial design draft",
           requestId: requestDRM001.id,
-          uploadedById: designerSarah.id,
+          uploadedById: createdUsers["sarah.designer"].id,
         },
         {
           filename: "hero-banner-v2.psd",
@@ -394,7 +471,7 @@ async function main() {
           version: 2,
           versionNote: "Updated with feedback - larger CTA button",
           requestId: requestDRM001.id,
-          uploadedById: designerSarah.id,
+          uploadedById: createdUsers["sarah.designer"].id,
         },
         {
           filename: "hero-banner-1920x600.png",
@@ -405,13 +482,13 @@ async function main() {
           version: 1,
           versionNote: "Final approved version - Desktop",
           requestId: requestDRM001.id,
-          uploadedById: designerSarah.id,
+          uploadedById: createdUsers["sarah.designer"].id,
         },
       ],
     })
   }
 
-  const requestDRM003 = requests.find(r => r.drmCode === "DRM-2026-003")
+  const requestDRM003 = requests.find((r) => r.drmCode === "DRM-2026-003")
   if (requestDRM003) {
     await prisma.asset.createMany({
       data: [
@@ -424,7 +501,7 @@ async function main() {
           version: 1,
           versionNote: "Source Illustrator file",
           requestId: requestDRM003.id,
-          uploadedById: designerMike.id,
+          uploadedById: createdUsers["mike.creative"].id,
         },
         {
           filename: "email-header-final.png",
@@ -435,7 +512,7 @@ async function main() {
           version: 1,
           versionNote: "Final email header",
           requestId: requestDRM003.id,
-          uploadedById: designerMike.id,
+          uploadedById: createdUsers["mike.creative"].id,
         },
         {
           filename: "email-footer-final.png",
@@ -446,7 +523,7 @@ async function main() {
           version: 1,
           versionNote: "Final email footer",
           requestId: requestDRM003.id,
-          uploadedById: designerMike.id,
+          uploadedById: createdUsers["mike.creative"].id,
         },
       ],
     })
@@ -484,4 +561,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
-

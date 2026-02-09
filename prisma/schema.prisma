@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // User roles enum
@@ -52,12 +53,11 @@ enum AssetType {
   final     // Final deliverables - visible to everyone including requesters
 }
 
-// User model
+// User model - linked to Supabase auth.users
 model User {
-  id                      Int            @id @default(autoincrement())
+  id                      String         @id // UUID from Supabase auth.users
   username                String         @unique
   email                   String         @unique
-  password                String
   role                    Role           @default(requester)
   status                  UserStatus     @default(active)
   lastLogin               DateTime?
@@ -85,7 +85,7 @@ model Catalogue {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  createdById Int
+  createdById String
   createdBy   User      @relation(fields: [createdById], references: [id])
   
   requests    Request[]
@@ -109,10 +109,10 @@ model Request {
   updatedAt     DateTime       @updatedAt
 
   // Relations
-  requesterId   Int
+  requesterId   String
   requester     User           @relation("RequestRequester", fields: [requesterId], references: [id])
   
-  designerId    Int?
+  designerId    String?
   designer      User?          @relation("RequestDesigner", fields: [designerId], references: [id])
   
   catalogueId   String?
@@ -136,7 +136,7 @@ model Comment {
   requestId   String
   request     Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
   
-  authorId    Int
+  authorId    String
   author      User      @relation(fields: [authorId], references: [id])
 
   @@map("comments")
@@ -158,7 +158,7 @@ model Asset {
   requestId   String
   request     Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
   
-  uploadedById Int
+  uploadedById String
   uploadedBy   User     @relation(fields: [uploadedById], references: [id])
 
   @@map("assets")
@@ -184,10 +184,10 @@ model Notification {
   createdAt   DateTime         @default(now())
 
   // Relations
-  userId      Int              // User who receives the notification
+  userId      String           // User who receives the notification
   user        User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
   
-  fromUserId  Int?             // User who triggered the notification (optional)
+  fromUserId  String?          // User who triggered the notification (optional)
   fromUser    User?            @relation("NotificationSender", fields: [fromUserId], references: [id])
   
   requestId   String?          // Related request (optional)

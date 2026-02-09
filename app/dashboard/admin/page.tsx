@@ -8,7 +8,7 @@ import { AdminClient } from "./admin-client"
 import { useAuth } from "@/contexts/auth-context"
 
 interface UserData {
-  id: number
+  id: string // UUID from Supabase
   username: string
   email: string
   role: string
