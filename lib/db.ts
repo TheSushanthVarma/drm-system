@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv"
 import * as path from "path"
-import { PrismaClient } from "./generated/prisma/client"
+import { PrismaClient } from "@prisma/client"
 
 // Load .env file explicitly
 dotenv.config({ path: path.resolve(process.cwd(), ".env") })
