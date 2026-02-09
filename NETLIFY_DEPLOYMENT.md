@@ -27,10 +27,23 @@ In Netlify dashboard, go to:
 **Site settings** → **Environment variables**
 
 Add all your required environment variables:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (if needed)
-- Any other environment variables your app requires
+
+**For Supabase (Recommended):**
+- `DATABASE_URL` - **Required!** Set this to your Supabase database connection string
+  - Get it from: Supabase Dashboard → Settings → Database → Connection string → URI format
+  - **Pooled connection (recommended)**: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1`
+  - **Direct connection**: `postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres`
+- `SUPABASE_DATABASE_URL` - Your Supabase database connection string (same as `DATABASE_URL`)
+- `DIRECT_URL` - (Optional) Direct connection string for Prisma migrations (use port 5432, not 6543)
+- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL (e.g., `https://[PROJECT-REF].supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` - Your Supabase publishable key
+- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for server-side operations)
+- `DB_CONNECTION` - Set to `supabase`
+
+**Important:** 
+- `DATABASE_URL` **must** be set to your Supabase connection string, as Prisma needs it during the build process to generate the client
+- You can use the same value for both `DATABASE_URL` and `SUPABASE_DATABASE_URL`
+- Use port `6543` for pooled connections (recommended) or port `5432` for direct connections
 
 ### 3. Deploy
 
@@ -80,8 +93,9 @@ If routes aren't working:
 ### Build Failures
 
 1. Check build logs in Netlify dashboard
-2. Ensure Node.js version matches (configured as 18 in `netlify.toml`)
+2. Ensure Node.js version matches (configured as 20 in `netlify.toml`)
 3. Verify all dependencies are in `package.json`
+4. Ensure `DATABASE_URL` is set in Netlify environment variables (required for Prisma Client generation)
 
 ### Environment Variables
 
