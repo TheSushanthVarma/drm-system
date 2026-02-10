@@ -84,6 +84,8 @@ model User {
   notificationsSent       Notification[]      @relation("NotificationSender")
   roleChangeRequests      RoleChangeRequest[] @relation("RoleChangeRequester")
   roleChangeReviews       RoleChangeRequest[] @relation("RoleChangeReviewer")
+  auditLogs               AuditLog[]          @relation("AuditPerformer")
+  settingsUpdated         SystemSetting[]     @relation("SettingUpdater")
 
   @@map("users")
 }
@@ -195,6 +197,37 @@ model Asset {
   uploadedBy   User     @relation(fields: [uploadedById], references: [id])
 
   @@map("assets")
+}
+
+// Audit log for admin action tracking
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+  action        String   // e.g., "user.role_changed", "user.deactivated", "settings.updated"
+  targetType    String   // e.g., "user", "request", "system"
+  targetId      String?  // ID of the affected entity
+  details       Json?    // Additional context as JSON
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  performedById String
+  performedBy   User     @relation("AuditPerformer", fields: [performedById], references: [id])
+
+  @@map("audit_logs")
+}
+
+// System settings key-value store
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @default(now())
+
+  // Relations
+  updatedById String?
+  updatedBy   User?    @relation("SettingUpdater", fields: [updatedById], references: [id])
+
+  @@map("system_settings")
 }
 
 // Notification type enum

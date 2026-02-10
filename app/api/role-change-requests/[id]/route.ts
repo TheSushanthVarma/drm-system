@@ -61,6 +61,22 @@ export async function PATCH(
       })
     }
 
+    // Record audit log
+    await prisma.auditLog.create({
+      data: {
+        action: action === "approve" ? "role_request.approved" : "role_request.rejected",
+        targetType: "user",
+        targetId: roleChangeRequest.userId,
+        details: {
+          targetUsername: roleChangeRequest.user.username,
+          currentRole: roleChangeRequest.currentRole,
+          requestedRole: roleChangeRequest.requestedRole,
+          reviewNote: reviewNote?.trim() || null,
+        },
+        performedById: session.id,
+      },
+    })
+
     // Notify the user
     await prisma.notification.create({
       data: {

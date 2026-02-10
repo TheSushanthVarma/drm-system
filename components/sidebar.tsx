@@ -79,6 +79,7 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
             const isActive = pathname === item.href || 
               (item.href === "/dashboard/requests" && pathname.startsWith("/dashboard/requests") && item.label !== "New Request") ||
               (item.href === "/dashboard/catalogues" && pathname.startsWith("/dashboard/catalogues")) ||
+              (item.href === "/dashboard/admin" && item.label === "Admin Panel" && pathname === "/dashboard/admin") ||
               (item.href === "/dashboard/admin/role-requests" && pathname === "/dashboard/admin/role-requests")
             return (
               <Link
