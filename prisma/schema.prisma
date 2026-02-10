@@ -53,27 +53,60 @@ enum AssetType {
   final     // Final deliverables - visible to everyone including requesters
 }
 
+// Role change request status
+enum RoleChangeStatus {
+  pending
+  approved
+  rejected
+}
+
 // User model - linked to Supabase auth.users
 model User {
-  id                      String         @id // UUID from Supabase auth.users
-  username                String         @unique
-  email                   String         @unique
-  role                    Role           @default(requester)
-  status                  UserStatus     @default(active)
+  id                      String              @id // UUID from Supabase auth.users
+  username                String              @unique
+  email                   String              @unique
+  role                    Role                @default(requester)
+  status                  UserStatus          @default(active)
+  phone                   String?
+  department              String?
+  bio                     String?
   lastLogin               DateTime?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 
   // Relations
-  requestsCreated         Request[]      @relation("RequestRequester")
-  requestsAssigned        Request[]      @relation("RequestDesigner")
+  requestsCreated         Request[]           @relation("RequestRequester")
+  requestsAssigned        Request[]           @relation("RequestDesigner")
   cataloguesCreated       Catalogue[]
   comments                Comment[]
   assetsUploaded          Asset[]
-  notificationsReceived   Notification[] @relation("NotificationRecipient")
-  notificationsSent       Notification[] @relation("NotificationSender")
+  notificationsReceived   Notification[]      @relation("NotificationRecipient")
+  notificationsSent       Notification[]      @relation("NotificationSender")
+  roleChangeRequests      RoleChangeRequest[] @relation("RoleChangeRequester")
+  roleChangeReviews       RoleChangeRequest[] @relation("RoleChangeReviewer")
 
   @@map("users")
+}
+
+// Role change request model - needs admin approval
+model RoleChangeRequest {
+  id            String           @id @default(cuid())
+  currentRole   Role
+  requestedRole Role
+  status        RoleChangeStatus @default(pending)
+  reason        String?
+  reviewNote    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  userId        String
+  user          User             @relation("RoleChangeRequester", fields: [userId], references: [id], onDelete: Cascade)
+
+  reviewedById  String?
+  reviewedBy    User?            @relation("RoleChangeReviewer", fields: [reviewedById], references: [id])
+
+  @@map("role_change_requests")
 }
 
 // Catalogue model for grouping requests

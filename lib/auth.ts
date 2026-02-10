@@ -130,7 +130,8 @@ export async function login(email: string, password: string): Promise<{ success:
 export async function signup(
   username: string,
   email: string,
-  password: string
+  password: string,
+  role: "designer" | "requester" = "requester"
 ): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
     // Validate email domain - only allow @techdemocracy.com
@@ -211,7 +212,7 @@ export async function signup(
           id: data.user.id,
           username: username.trim(),
           email: email.toLowerCase().trim(),
-          role: "requester", // Default role for new signups
+          role: role, // Role selected during signup
           status: "active",
         },
       })

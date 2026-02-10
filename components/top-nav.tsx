@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, Bell, LogOut, User, MessageSquare, CheckCircle, UserPlus, Upload, RefreshCw, Check, ExternalLink } from "lucide-react"
+import { Menu, Bell, LogOut, User, MessageSquare, CheckCircle, UserPlus, Upload, RefreshCw, Check, ExternalLink, Settings, Sun, Moon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/contexts/auth-context"
 import { useNotifications, AppNotification } from "@/contexts/notification-context"
+import { useTheme } from "@/contexts/theme-context"
 import { requestNotificationPermission, canShowNotifications } from "@/lib/notifications"
 
 interface TopNavProps {
@@ -24,6 +25,7 @@ interface TopNavProps {
 export function TopNav({ onMenuClick }: TopNavProps) {
   const { user, logout } = useAuth()
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications()
+  const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [requestingPermission, setRequestingPermission] = useState(false)
@@ -122,6 +124,15 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         <div className="flex-1" />
 
         <div className="flex items-center gap-4">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </button>
+
           {/* Notifications Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -266,14 +277,24 @@ export function TopNav({ onMenuClick }: TopNavProps) {
                 <div className="text-xs text-muted-foreground">{user?.email}</div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex items-center gap-2">
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/profile")}
+                className="flex items-center gap-2 cursor-pointer"
+              >
                 <User className="w-4 h-4" />
                 <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings")}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
+                <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-destructive focus:text-destructive"
+                className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Sign Out</span>

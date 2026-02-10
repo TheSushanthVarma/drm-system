@@ -4,7 +4,7 @@ import { signup } from "@/lib/auth"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { username, email, password } = body
+    const { username, email, password, role } = body
 
     if (!username || !email || !password) {
       return NextResponse.json(
@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await signup(username, email, password)
+    // Validate role
+    const validRoles = ["designer", "requester"]
+    const selectedRole = validRoles.includes(role) ? role : "requester"
+
+    const result = await signup(username, email, password, selectedRole)
 
     if (!result.success) {
       return NextResponse.json(

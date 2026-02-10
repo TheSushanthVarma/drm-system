@@ -2,14 +2,15 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2, Palette, FileText } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -21,7 +22,10 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "requester" as "designer" | "requester",
   })
+  const searchParams = useSearchParams()
+  const errorCode = searchParams.get("error_code")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,6 +60,7 @@ export default function RegisterPage() {
           username: formData.username.trim(),
           email: formData.email.trim(),
           password: formData.password,
+          role: formData.role,
         }),
       })
 
@@ -70,6 +75,7 @@ export default function RegisterPage() {
           email: "",
           password: "",
           confirmPassword: "",
+          role: "requester",
         })
       } else {
         setError(data.error || "Failed to create account. Please try again.")
@@ -101,6 +107,23 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent>
+          {errorCode === "otp_expired" && (
+            <div className="mb-4 flex flex-col gap-1 p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="font-semibold">Verification link expired</span>
+              </div>
+              <p className="ml-6">
+                The email verification link is invalid or has expired. If you&apos;ve already verified your email,
+                you can go to{" "}
+                <Link href="/" className="text-primary underline font-semibold">
+                  Sign in
+                </Link>
+                . Otherwise, please register again to receive a new verification email.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Full Name</label>
@@ -131,6 +154,47 @@ export default function RegisterPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">Only @techdemocracy.com emails are allowed</p>
+            </div>
+
+            {/* Role Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">I am a</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: "requester" })}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                    formData.role === "requester"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-muted bg-muted/30 hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <FileText className={`w-6 h-6 ${formData.role === "requester" ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`text-sm font-semibold ${formData.role === "requester" ? "text-primary" : "text-muted-foreground"}`}>
+                    Requester
+                  </span>
+                  <span className="text-xs text-muted-foreground text-center">
+                    Submit design requests
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: "designer" })}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                    formData.role === "designer"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-muted bg-muted/30 hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <Palette className={`w-6 h-6 ${formData.role === "designer" ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`text-sm font-semibold ${formData.role === "designer" ? "text-primary" : "text-muted-foreground"}`}>
+                    Designer
+                  </span>
+                  <span className="text-xs text-muted-foreground text-center">
+                    Work on design tasks
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -223,5 +287,19 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-purple-400 to-secondary">
+          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   )
 }

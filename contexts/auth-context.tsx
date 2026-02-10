@@ -19,6 +19,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
   isAdmin: boolean
   isDesigner: boolean
   isRequester: boolean
@@ -86,12 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const refreshUser = async () => {
+    await checkSession()
+  }
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
     login,
     logout,
+    refreshUser,
     isAdmin: user?.role === "admin",
     isDesigner: user?.role === "designer",
     isRequester: user?.role === "requester",

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Inbox, Settings, Users, X, Plus, Folder } from "lucide-react"
+import { LayoutDashboard, Inbox, Settings, Users, X, Plus, Folder, ArrowRightLeft } from "lucide-react"
 import { useAuth, usePermissions } from "@/contexts/auth-context"
 
 interface SidebarProps {
@@ -19,11 +19,12 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
   // Build navigation items based on role
   const navigationItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
-    { href: "/dashboard/catalogues", label: "Catalogues", icon: Folder, show: permissions.canCreateRequest },
+    { href: "/dashboard/catalogues", label: "Catalogues", icon: Folder, show: permissions.canCreateRequest || isAdmin },
     { href: "/dashboard/requests", label: "All Requests", icon: Inbox, show: permissions.canViewAllRequests },
     { href: "/dashboard/requests", label: "Requests", icon: Inbox, show: isRequester },
     { href: "/dashboard/requests/new", label: "New Request", icon: Plus, show: permissions.canCreateRequest },
     { href: "/dashboard/admin", label: "Admin Panel", icon: Users, show: permissions.canViewAdminPanel },
+    { href: "/dashboard/admin/role-requests", label: "Role Requests", icon: ArrowRightLeft, show: isAdmin },
   ].filter(item => item.show)
 
   // Get role display name and badge color
@@ -77,7 +78,8 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
             const Icon = item.icon
             const isActive = pathname === item.href || 
               (item.href === "/dashboard/requests" && pathname.startsWith("/dashboard/requests") && item.label !== "New Request") ||
-              (item.href === "/dashboard/catalogues" && pathname.startsWith("/dashboard/catalogues"))
+              (item.href === "/dashboard/catalogues" && pathname.startsWith("/dashboard/catalogues")) ||
+              (item.href === "/dashboard/admin/role-requests" && pathname === "/dashboard/admin/role-requests")
             return (
               <Link
                 key={`${item.href}-${item.label}`}
